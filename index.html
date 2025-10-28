@@ -141,10 +141,10 @@
       let shipMarkers = [];
       let selectedShip = null;
 
-      function createShipIcon(shipNumber, isSelected = false) {
+      function createShipIcon(mmsi, isSelected = false) {
         const color = isSelected ? "#dc3545" : "#007bff";
         const size = isSelected ? 35 : 25;
-        const content = isSelected ? "🚢" : shipNumber;
+        const content = isSelected ? "🚢" : mmsi;
 
         return L.divIcon({
           className: "ship-marker",
@@ -175,7 +175,7 @@
         const lat = coords[1];
         const lng = coords[0];
 
-        document.getElementById("shipNumber").textContent = `Laiva ${ship.shipNumber}`;
+        document.getElementById("shipNumber").textContent = `Laiva ${ship.mmsi}`;
         document.getElementById("speed").textContent = ship.speed + " km/h";
         document.getElementById("coordinates").textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
@@ -197,12 +197,12 @@
           const lng = coords[0];
 
           const marker = L.marker([lat, lng], {
-            icon: createShipIcon(ship.shipNumber, false),
+            icon: createShipIcon(ship.mmsi, false),
           }).addTo(map);
 
           const timestamp = new Date(ship.timestamp);
           marker.bindPopup(`
-            <strong>Laiva ${ship.shipNumber}</strong><br>
+            <strong>Laiva ${ship.mmsi}</strong><br>
             Nopeus: ${ship.speed} km/h<br>
             Tarkkuus: ${ship.accuracy} m<br>
             Päivitetty: ${timestamp.toLocaleTimeString("fi-FI")}
@@ -226,12 +226,12 @@
         shipMarkers = [];
 
         const marker = L.marker([lat, lng], {
-          icon: createShipIcon(ship.shipNumber, true),
+          icon: createShipIcon(ship.mmsi, true),
         }).addTo(map);
 
         const timestamp = new Date(ship.timestamp);
         marker.bindPopup(`
-          <strong>Laiva ${ship.shipNumber}</strong><br>
+          <strong>Laiva ${ship.mmsi}</strong><br>
           Nopeus: ${ship.speed} km/h<br>
           Tarkkuus: ${ship.accuracy} m<br>
           Päivitetty: ${timestamp.toLocaleTimeString("fi-FI")}
@@ -299,7 +299,7 @@
             const resultDiv = document.getElementById("result");
             let html = "<h3>Top 5 nopeinta laivaa:</h3>";
             ships.forEach((ship, index) => {
-              html += `<p>${index + 1}. Laiva ${ship.shipNumber} - ${ship.speed} km/h</p>`;
+              html += `<p>${index + 1}. Laiva ${ship.mmsi} - ${ship.speed} km/h</p>`;
             });
             resultDiv.innerHTML = html;
             resultDiv.style.display = "block";
