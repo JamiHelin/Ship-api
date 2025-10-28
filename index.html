@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Junien reaaliaikainen sijainti</title>
+    <title>Laivojen reaaliaikainen sijainti</title>
 
     <link
       rel="stylesheet"
@@ -41,7 +41,7 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
 
-      .train-info {
+      .ship-info {
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
@@ -67,7 +67,7 @@
         color: #007bff;
       }
 
-      .train-number {
+      .ship-number {
         color: #28a745;
       }
 
@@ -96,14 +96,14 @@
     </style>
   </head>
   <body>
-    <h1>Junien reaaliaikainen sijainti</h1>
+    <h1>Laivojen reaaliaikainen sijainti</h1>
 
     <div class="info-panel">
-      <div class="train-info">
+      <div class="ship-info">
         <div class="info-item">
-          <div class="info-label">Valittu juna:</div>
-          <div class="info-value train-number" id="trainNumber">
-            Kaikki junat
+          <div class="info-label">Valittu Laiva:</div>
+          <div class="info-value ship-number" id="shipNumber">
+            Kaikki laivat
           </div>
         </div>
         <div class="info-item">
@@ -120,9 +120,9 @@
         </div>
       </div>
 
-      <button onclick="showAllTrains()">Näytä kaikki junat</button>
-      <button onclick="showTrainCount()">Näytä junamäärä</button>
-      <button onclick="showFastestTrains()">Näytä nopeimmat</button>
+      <button onclick="showAllShipss()">Näytä kaikki laivat</button>
+      <button onclick="showShipCount()">Näytä laivojen määrä</button>
+      <button onclick="showFastestShips()">Näytä nopeimmat</button>
 
       <div id="result"></div>
     </div>
@@ -138,16 +138,16 @@
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
 
-      let trainMarkers = [];
-      let selectedTrain = null;
+      let shipMarkers = [];
+      let selectedShip = null;
 
-      function createTrainIcon(trainNumber, isSelected = false) {
+      function createShipIcon(shipNumber, isSelected = false) {
         const color = isSelected ? "#dc3545" : "#007bff";
         const size = isSelected ? 35 : 25;
-        const content = isSelected ? "🚂" : trainNumber;
+        const content = isSelected ? "🚢" : shipNumber;
 
         return L.divIcon({
-          className: "train-marker",
+          className: "ship-marker",
           html: `
             <div style="
                 background: ${color};
@@ -170,97 +170,97 @@
         });
       }
 
-      function updateSelectedTrainInfo(train) {
-        const coords = train.location.coordinates;
+      function updateSelectedShipInfo(ship) {
+        const coords = ship.location.coordinates;
         const lat = coords[1];
         const lng = coords[0];
 
-        document.getElementById("trainNumber").textContent = `Juna ${train.trainNumber}`;
-        document.getElementById("speed").textContent = train.speed + " km/h";
+        document.getElementById("shipNumber").textContent = `Laiva ${ship.shipNumber}`;
+        document.getElementById("speed").textContent = ship.speed + " km/h";
         document.getElementById("coordinates").textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 
-        const timestamp = new Date(train.timestamp);
+        const timestamp = new Date(ship.timestamp);
         document.getElementById("timestamp").textContent = timestamp.toLocaleString("fi-FI");
 
-        updateSpeedColor(train.speed);
+        updateSpeedColor(ship.speed);
       }
 
-      function displayAllTrains(trains) {
-        if (selectedTrain) return;
+      function displayAllShips(ships) {
+        if (selectedShip) return;
 
-        trainMarkers.forEach((marker) => map.removeLayer(marker));
-        trainMarkers = [];
+        shipMarkers.forEach((marker) => map.removeLayer(marker));
+        ship = [];
 
-        trains.forEach((train) => {
-          const coords = train.location.coordinates;
+        ships.forEach((ship) => {
+          const coords = ship.location.coordinates;
           const lat = coords[1];
           const lng = coords[0];
 
           const marker = L.marker([lat, lng], {
-            icon: createTrainIcon(train.trainNumber, false),
+            icon: createShipIcon(ship.shipNumber, false),
           }).addTo(map);
 
-          const timestamp = new Date(train.timestamp);
+          const timestamp = new Date(ship.timestamp);
           marker.bindPopup(`
-            <strong>Juna ${train.trainNumber}</strong><br>
-            Nopeus: ${train.speed} km/h<br>
-            Tarkkuus: ${train.accuracy} m<br>
+            <strong>Laiva ${ship.shipNumber}</strong><br>
+            Nopeus: ${ship.speed} km/h<br>
+            Tarkkuus: ${ship.accuracy} m<br>
             Päivitetty: ${timestamp.toLocaleTimeString("fi-FI")}
           `);
 
           marker.on("click", function () {
-            selectTrain(train);
+            selectShip(ship);
           });
 
-          trainMarkers.push(marker);
+          shipMarkers.push(marker);
         });
       }
 
-      function selectTrain(train) {
-        selectedTrain = train;
-        const coords = train.location.coordinates;
+      function selectShip(ship) {
+        selectedShip = ship;
+        const coords = ship.location.coordinates;
         const lat = coords[1];
         const lng = coords[0];
 
-        trainMarkers.forEach((marker) => map.removeLayer(marker));
-        trainMarkers = [];
+        shipMarkers.forEach((marker) => map.removeLayer(marker));
+        shipMarkers = [];
 
         const marker = L.marker([lat, lng], {
-          icon: createTrainIcon(train.trainNumber, true),
+          icon: createShipIcon(ship.shipNumber, true),
         }).addTo(map);
 
-        const timestamp = new Date(train.timestamp);
+        const timestamp = new Date(ship.timestamp);
         marker.bindPopup(`
-          <strong>Juna ${train.trainNumber}</strong><br>
-          Nopeus: ${train.speed} km/h<br>
-          Tarkkuus: ${train.accuracy} m<br>
+          <strong>Laiva ${ship.shipNumber}</strong><br>
+          Nopeus: ${ship.speed} km/h<br>
+          Tarkkuus: ${ship.accuracy} m<br>
           Päivitetty: ${timestamp.toLocaleTimeString("fi-FI")}
         `);
 
-        trainMarkers.push(marker);
+        shipMarkers.push(marker);
 
         setTimeout(() => {
           map.invalidateSize();
           map.setView([lat, lng], 13);
         }, 50);
 
-        updateSelectedTrainInfo(train);
+        updateSelectedShipInfo(ship);
       }
 
-      function showAllTrains() {
-        selectedTrain = null;
-        document.getElementById("trainNumber").textContent = "Kaikki junat";
+      function showAllShips() {
+        selectedShip = null;
+        document.getElementById("shipNumber").textContent = "Kaikki laivat";
         document.getElementById("speed").textContent = "-";
         document.getElementById("coordinates").textContent = "-";
         document.getElementById("timestamp").textContent = "-";
         document.getElementById("result").style.display = "none";
 
         map.setView([64.5, 26.5], 6);
-        fetchAllTrains().then(displayAllTrains);
+        fetchAllShips().then(displayAllShips);
       }
 
-      function fetchAllTrains() {
-        return fetch("http://localhost:3000/api/trains").then((response) =>
+      function fetchAllShips() {
+        return fetch("http://localhost:3000/api/ships").then((response) =>
           response.json()
         );
       }
@@ -276,53 +276,53 @@
         }
       }
 
-      // TEHTÄVÄ 1: Näytä junamäärä
-      function showTrainCount() {
-        fetch("http://localhost:3000/api/trains/count")
+      // TEHTÄVÄ 1: Näytä laivamäärä
+      function showShipCount() {
+        fetch("http://localhost:3000/api/ships/count")
           .then((response) => response.json())
           .then((data) => {
             const resultDiv = document.getElementById("result");
-            resultDiv.innerHTML = `<h3>Junia yhteensä: ${data.count} kpl</h3>`;
+            resultDiv.innerHTML = `<h3>Laivoja yhteensä: ${data.count} kpl</h3>`;
             resultDiv.style.display = "block";
           })
           .catch((error) => {
             console.error("Virhe:", error);
-            alert("Virhe! Tarkista että backend on käynnissä ja endpoint /api/trains/count on tehty.");
+            alert("Virhe! Tarkista että backend on käynnissä ja endpoint /api/ships/count on tehty.");
           });
       }
 
-      // TEHTÄVÄ 2: Näytä nopeimmat junat
-      function showFastestTrains() {
-        fetch("http://localhost:3000/api/trains/fastest")
+      // TEHTÄVÄ 2: Näytä nopeimmat laivat
+      function showFastestShips() {
+        fetch("http://localhost:3000/api/ships/fastest")
           .then((response) => response.json())
-          .then((trains) => {
+          .then((ships) => {
             const resultDiv = document.getElementById("result");
-            let html = "<h3>Top 5 nopeinta junaa:</h3>";
-            trains.forEach((train, index) => {
-              html += `<p>${index + 1}. Juna ${train.trainNumber} - ${train.speed} km/h</p>`;
+            let html = "<h3>Top 5 nopeinta laivaa:</h3>";
+            ships.forEach((ship, index) => {
+              html += `<p>${index + 1}. Laiva ${ship.shipNumber} - ${ship.speed} km/h</p>`;
             });
             resultDiv.innerHTML = html;
             resultDiv.style.display = "block";
           })
           .catch((error) => {
             console.error("Virhe:", error);
-            alert("Virhe! Tarkista että backend on käynnissä ja endpoint /api/trains/fastest on tehty.");
+            alert("Virhe! Tarkista että backend on käynnissä ja endpoint /api/ships/fastest on tehty.");
           });
       }
 
       // Käynnistä sovellus
-      fetchAllTrains().then((trains) => {
-        if (trains.length > 0) {
-          displayAllTrains(trains);
-          console.log(`Ladattu ${trains.length} junaa kartalle`);
+      fetchAllShips().then((ships) => {
+        if (ships.length > 0) {
+          displayAllShips(ships);
+          console.log(`Ladattu ${ships.length} laivaa kartalle`);
         } else {
-          console.warn("Ei junia saatavilla.");
+          console.warn("Ei laivoja saatavilla.");
         }
       });
 
-      // Päivitä junien sijainteja 30 sekunnin välein
+      // Päivitä laivojen sijainteja 30 sekunnin välein
       setInterval(() => {
-        fetchAllTrains().then(displayAllTrains);
+        fetchAllShips().then(displayAllShips);
       }, 30000);
     </script>
   </body>
