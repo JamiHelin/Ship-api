@@ -28,69 +28,116 @@ async function getWeather(lat, lng) {
   };
 }
 
-// Kaikki junat
-app.get("/api/trains", async (req, res) => {
-  const response = await fetch(
-    "https://rata.digitraffic.fi/api/v1/train-locations/latest"
-  );
-  const trains = await response.json();
-
-  // Filtteröi vain tarvittavat kentät
-  const filteredTrains = trains.map((train) => ({
-    trainNumber: train.trainNumber,
-    location: train.location,
-    speed: train.speed,
-    timestamp: train.timestamp,
-    accuracy: train.accuracy,
-  }));
-
-  res.json(filteredTrains);
-});
-
-// TEHTÄVÄ 1: Lisää tähän /api/trains/count endpoint
-app.get("/api/trains/count", async (req, res) => {
+// Kaikki laivat (viimeisen 10 min ajalta)
+app.get("/api/ships", async (req, res) => {
   try {
-    const response = await fetch(
-      "https://rata.digitraffic.fi/api/v1/train-locations/latest"
-    );
-    const trains = await response.json();
-    res.json({ count: Array.isArray(trains) ? trains.length : 0 });
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const url = `https://meri.digitraffic.fi/api/ais/v1/locations?from=${tenMinutesAgo}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    // Otetaan vain liikkuvat laivat
+    const ships = features
+      .filter((f) => (f?.properties?.sog || 0) > 0.5 && f?.geometry?.type === "Point")
+      .map((f) => ({
+        mmsi: f.properties.mmsi,
+        location: { type: "Point", coordinates: f.geometry.coordinates },
+        sog: f.properties.sog, // solmuina
+        speed: Math.round((f.properties.sog || 0) * 1.852), // km/h
+        timestamp: f.properties.timestamp,
+        cog: f.properties.cog ?? null,
+      }));
+
+    res.json(ships);
   } catch (err) {
-    res.status(500).json({ error: "Junamäärän hakeminen epäonnistui" });
+    res.status(500).json({ error: "Laivojen hakeminen epäonnistui" });
   }
 });
 
-// TEHTÄVÄ 2: Lisää tähän /api/trains/fastest endpoint
-app.get("/api/trains/fastest", async (req, res) => {
+// Laivojen määrä
+app.get("/api/ships/count", async (req, res) => {
   try {
-    const response = await fetch(
-      "https://rata.digitraffic.fi/api/v1/train-locations/latest"
-    );
-    const trains = await response.json();
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const url = `https://meri.digitraffic.fi/api/ais/v1/locations?from=${tenMinutesAgo}`;
 
-    // Järjestä nopeuden mukaan ja ota 5 nopeinta
-    const fastest = trains
-      .filter((t) => typeof t.speed === "number")
+    const response = await fetch(url);
+    const data = await response.json();
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    // Lasketaan vain liikkuvat laivat
+    const count = features.filter((f) => (f?.properties?.sog || 0) > 0.5).length;
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: "Laivamäärän hakeminen epäonnistui" });
+  }
+});
+
+// Nopeimmat laivat (Top 5)
+app.get("/api/ships/fastest", async (req, res) => {
+  try {
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const url = `https://meri.digitraffic.fi/api/ais/v1/locations?from=${tenMinutesAgo}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    const fastest = features
+      .filter((f) => (f?.properties?.sog || 0) > 0.5 && f?.geometry?.type === "Point")
+      .map((f) => ({
+        mmsi: f.properties.mmsi,
+        location: { type: "Point", coordinates: f.geometry.coordinates },
+        sog: f.properties.sog,
+        speed: Math.round((f.properties.sog || 0) * 1.852),
+        timestamp: f.properties.timestamp,
+        cog: f.properties.cog ?? null,
+      }))
       .sort((a, b) => b.speed - a.speed)
       .slice(0, 5);
 
     res.json(fastest);
   } catch (err) {
-    res.status(500).json({ error: "Nopeimpien junien hakeminen epäonnistui" });
+    res.status(500).json({ error: "Nopeimpien laivojen hakeminen epäonnistui" });
   }
 });
 
-// Yksi juna + kaupunki + sää
-app.get("/api/trains/:id", async (req, res) => {
-  const response = await fetch(
-    `https://rata.digitraffic.fi/api/v1/train-locations/latest/${req.params.id}`
-  );
-  const trains = await response.json();
-  const train = trains[0];
-  const [lng, lat] = train.location.coordinates;
-  const city = await getCity(lat, lng);
-  const weather = await getWeather(lat, lng);
-  res.json({ ...train, city, weather });
+// Yksi laiva + kaupunki + sää mmsi:n perusteella
+app.get("/api/ships/:mmsi", async (req, res) => {
+  try {
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    const url = `https://meri.digitraffic.fi/api/ais/v1/locations?from=${tenMinutesAgo}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+    const features = Array.isArray(data?.features) ? data.features : [];
+
+    const feature = features.find((f) => String(f?.properties?.mmsi) === String(req.params.mmsi));
+
+    if (!feature) {
+      return res.status(404).json({ error: "Laivaa ei löytynyt" });
+    }
+
+    const [lng, lat] = feature.geometry.coordinates;
+    const city = await getCity(lat, lng);
+    const weather = await getWeather(lat, lng);
+
+    const ship = {
+      mmsi: feature.properties.mmsi,
+      location: { type: "Point", coordinates: feature.geometry.coordinates },
+      sog: feature.properties.sog,
+      speed: Math.round((feature.properties.sog || 0) * 1.852),
+      timestamp: feature.properties.timestamp,
+      cog: feature.properties.cog ?? null,
+      city,
+      weather,
+    };
+
+    res.json(ship);
+  } catch (err) {
+    res.status(500).json({ error: "Laivan hakeminen epäonnistui" });
+  }
 });
 
 app.listen(3000, () => console.log("Backend käynnissä: http://localhost:3000"));
